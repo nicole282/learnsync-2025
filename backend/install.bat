@@ -1,0 +1,6 @@
+@echo off
+echo 正在安装依赖包...
+npm install express socket.io mysql2 cors
+echo 安装完成！按任意键启动服务器...
+pause
+node server.js

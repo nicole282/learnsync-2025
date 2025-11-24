@@ -1,0 +1,13 @@
+{
+  "name": "learnsync-backend",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "mysql2": "^3.15.3",
+    "socket.io": "^4.8.1"
+  }
+}
