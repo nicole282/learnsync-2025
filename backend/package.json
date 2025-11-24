@@ -1,0 +1,19 @@
+{
+  "name": "learnsync-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "LearnSync Backend - IEMS5731 Group Project",
+  "main": "src/app.js",
+  "scripts": {
+    "dev": "nodemon src/app.js",
+    "start": "node src/app.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "mysql2": "^3.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
