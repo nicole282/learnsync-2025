@@ -1,77 +1,128 @@
-// backend/src/config/database.js
 import mysql from 'mysql2/promise';
+import { DB_CONSTANTS } from './constants.js';
 
-// 使用新创建的用户
+// Database configuration
 const dbConfig = {
-  host: 'localhost',
-  user: 'learnsync_user',
-  password: 'learnsync123', // 你设置的密码
-  database: 'learnsync',
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'learnsync_dev',
   waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  connectionLimit: DB_CONSTANTS.MAX_CONNECTIONS,
+  queueLimit: 0,
+  acquireTimeout: DB_CONSTANTS.ACQUIRE_TIMEOUT,
+  timeout: DB_CONSTANTS.TIMEOUT,
+  charset: 'utf8mb4',
+  timezone: '+08:00' // Hong Kong timezone
 };
 
-// 创建连接池
-const pool = mysql.createPool(dbConfig);
+let pool;
 
-// 测试数据库连接
-async function testConnection() {
+/**
+ * Create database connection pool and initialize tables
+ */
+export async function createDatabaseConnection() {
   try {
-    const connection = await pool.getConnection();
-    console.log('✅ 数据库连接成功');
-    connection.release();
-    return true;
-  } catch (error) {
-    console.log('❌ 数据库连接失败:', error.message);
-    return false;
-  }
-}
-
-// 初始化数据库表
-async function initializeDatabase() {
-  try {
-    // 创建数据库（如果不存在）
-    const tempConnection = await mysql.createConnection({
+    console.log('🔗 正在连接数据库...');
+    
+    // First, create database if it doesn't exist
+    const connection = await mysql.createConnection({
       host: dbConfig.host,
       user: dbConfig.user,
       password: dbConfig.password
     });
+
+    await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
+    await connection.end();
+
+    // Create connection pool
+    pool = mysql.createPool(dbConfig);
     
-    await tempConnection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
-    await tempConnection.end();
-
-    // 创建学习小组表
-    await pool.execute(`
-      CREATE TABLE IF NOT EXISTS study_groups (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        name VARCHAR(100) NOT NULL,
-        description TEXT,
-        course_code VARCHAR(20),
-        created_by INT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // 创建小组成员表
-    await pool.execute(`
-      CREATE TABLE IF NOT EXISTS group_members (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        group_id INT,
-        user_id INT,
-        role ENUM('owner', 'admin', 'member') DEFAULT 'member',
-        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (group_id) REFERENCES study_groups(id) ON DELETE CASCADE,
-        UNIQUE KEY unique_member (group_id, user_id)
-      )
-    `);
-
-    console.log('✅ 数据库表初始化成功');
-    return true;
+    // Test connection
+    const testConnection = await pool.getConnection();
+    console.log('✅ 数据库连接成功');
+    testConnection.release();
+    
+    // Initialize database tables
+    await initializeTables();
+    
+    return pool;
   } catch (error) {
-    console.log('❌ 数据库初始化失败:', error);
-    return false;
+    console.error('❌ 数据库连接失败:', error.message);
+    throw error;
   }
 }
 
-export { pool, dbConfig, testConnection, initializeDatabase };
+/**
+ * Initialize all required database tables
+ */
+async function initializeTables() {
+  try {
+    console.log('📊 正在初始化数据库表...');
+    
+    // Users table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        avatar_url VARCHAR(255) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_email (email),
+        INDEX idx_username (username)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    
+    console.log('✅ 数据库表初始化完成');
+  } catch (error) {
+    console.error('❌ 数据库表初始化失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get database connection pool
+ */
+export function getConnection() {
+  if (!pool) {
+    throw new Error('数据库未连接，请先调用 createDatabaseConnection()');
+  }
+  return pool;
+}
+
+/**
+ * Execute a query with parameters
+ */
+export async function executeQuery(sql, params = []) {
+  const connection = getConnection();
+  
+  try {
+    const [rows] = await connection.execute(sql, params);
+    return rows;
+  } catch (error) {
+    console.error('数据库查询错误:', error);
+    throw error;
+  }
+}
+
+/**
+ * Execute a query and return the first result
+ */
+export async function executeQuerySingle(sql, params = []) {
+  const rows = await executeQuery(sql, params);
+  return rows[0] || null;
+}
+
+/**
+ * Close database connection
+ */
+export async function closeDatabaseConnection() {
+  if (pool) {
+    await pool.end();
+    console.log('✅ 数据库连接已关闭');
+  }
+}
+
+export default pool;
