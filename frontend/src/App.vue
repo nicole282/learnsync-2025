@@ -1,54 +1,72 @@
-<!-- frontend/src/App.vue -->
 <template>
-  <div id="app">
-    <header class="app-header">
-      <h1 @click="$router.push('/')" class="app-title">📚 LearnSync 学习小组管理系统</h1>
-    </header>
-    <main class="app-main">
-      <router-view />
-    </main>
+  <div class="app-layout">
+    <AppHeader v-if="showHeader" />
+    <div class="app-body">
+      <AppSidebar v-if="showSidebar" />
+      <main class="main-content" :class="{ 'with-sidebar': showSidebar }">
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </main>
+    </div>
+    <LoadingSpinner v-if="globalLoading" />
   </div>
 </template>
 
 <script setup>
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+import AppHeader from "@/components/common/AppHeader.vue";
+import AppSidebar from "@/components/common/AppSidebar.vue";
+import LoadingSpinner from "@/components/common/LoadingSpinner.vue";
 
+const route = useRoute();
+
+// 在登录页面不显示头部和侧边栏
+const showHeader = computed(() => !["Login", "Register"].includes(route.name));
+const showSidebar = computed(() => !["Login", "Register"].includes(route.name));
+
+// 全局加载状态（需要从 store 获取）
+const globalLoading = computed(() => false);
 </script>
 
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+<style lang="scss">
+.app-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-color);
 }
 
-body {
-  font-family: 'Arial', sans-serif;
-  background-color: #f5f5f5;
+.app-body {
+  display: flex;
+  flex: 1;
 }
 
-.app-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 20px;
-  text-align: center;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  cursor: pointer;
+.main-content {
+  flex: 1;
+  padding: 1.5rem;
+  transition: margin-left 0.3s ease;
+
+  &.with-sidebar {
+    margin-left: 250px;
+
+    @media (max-width: 768px) {
+      margin-left: 0;
+    }
+  }
 }
 
-.app-header {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0;
+// 页面切换动画
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
 }
 
-.app-title:hover {
-  opacity: 0.9;
-}
-
-.app-main {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  min-height: calc(100vh - 80px);
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

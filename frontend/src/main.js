@@ -1,15 +1,12 @@
-// frontend/src/main.js
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import router from './router'
-import App from './App.vue'
+import { createApp } from "vue";
+import { createPinia } from "pinia";
+import App from "./App.vue";
+import router from "./router";
+import "./assets/styles/global.scss";
 
-// 创建Vue应用
-const app = createApp(App)
+const app = createApp(App);
+const pinia = createPinia();
 
-// 使用状态管理
-app.use(createPinia())
-app.use(router)
-
-// 挂载到页面
-app.mount('#app')
+app.use(pinia);
+app.use(router);
+app.mount("#app");
