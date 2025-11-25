@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LearnSync 聊天测试</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Microsoft YaHei', sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin-bottom: 5px;
+            font-size: 24px;
+        }
+        .online-users {
+            background: #f8f9fa;
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .online-users .count {
+            background: #4CAF50;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+        .chat-box {
+            height: 400px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #fafafa;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 10px;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease-in;
+        }
+        .message.user {
+            background: #e3f2fd;
+            margin-left: auto;
+            border-bottom-right-radius: 2px;
+        }
+        .message.other {
+            background: #f5f5f5;
+            margin-right: auto;
+            border-bottom-left-radius: 2px;
+        }
+        .message.system {
+            background: #fff3cd;
+            margin: 10px auto;
+            text-align: center;
+            max-width: 60%;
+            font-style: italic;
+        }
+        .message .sender {
+            font-weight: bold;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .message .time {
+            font-size: 10px;
+            color: #999;
+            float: right;
+            margin-left: 10px;
+        }
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 10px;
+        }
+        .input-area input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            outline: none;
+            font-size: 14px;
+        }
+        .input-area input:focus {
+            border-color: #4CAF50;
+        }
+        .input-area button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .input-area button:hover {
+            background: #45a049;
+        }
+        .user-list {
+            background: #e8f5e8;
+            padding: 10px 15px;
+            border-radius: 10px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 LearnSync 实时聊天系统</h1>
+            <p>成员C - 实时协作功能演示</p>
+        </div>
+        
+        <div class="online-users">
+            <div class="user-list">
+                🟢 在线用户: <span id="onlineCount">0</span> 人
+                <span id="userNames">暂无用户</span>
+            </div>
+            <div>
+                <span class="count">消息数: <span id="messageCount">0</span></span>
+            </div>
+        </div>
+        
+        <div class="chat-box" id="chatBox">
+            <div class="message system">
+                欢迎使用 LearnSync 聊天系统！请先设置你的用户名。
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="输入消息... 按回车发送">
+            <button onclick="sendMessage()">发送</button>
+            <button onclick="setUsername()" style="background: #ff9800;">设置名字</button>
+        </div>
+    </div>
+
+    <script>
+        // 连接服务器
+        const socket = io('http://localhost:3000');
+        let username = '用户' + Math.floor(Math.random() * 1000);
+        let isJoined = false;
+
+        // 连接成功
+        socket.on('connect', () => {
+            console.log('✅ 连接服务器成功');
+            addSystemMessage('已连接到服务器');
+        });
+
+        // 接收新消息
+socket.on('new-message', (message) => {
+    console.log('📥 收到新消息:', message);
+    addMessageToChat(message);
+    updateMessageCount();
+});
+        
+
+        // 更新在线用户列表
+        socket.on('online-users-update', (users) => {
+            document.getElementById('onlineCount').textContent = users.length;
+            document.getElementById('userNames').textContent = users.map(u => u.username).join(', ');
+        });
+
+        // 添加消息到聊天框
+        function addMessageToChat(message) {
+            const chatBox = document.getElementById('chatBox');
+            const messageDiv = document.createElement('div');
+            
+            messageDiv.className = `message ${message.type === 'system' ? 'system' : 
+                                  message.sender === username ? 'user' : 'other'}`;
+            
+            messageDiv.innerHTML = `
+                <div class="sender">${message.sender}</div>
+                <div>${message.content}</div>
+                <div class="time">${message.time}</div>
+            `;
+            
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // 添加系统消息
+        function addSystemMessage(content) {
+            const chatBox = document.getElementById('chatBox');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message system';
+            messageDiv.textContent = content;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // 发送消息
+function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const content = input.value.trim();
+    
+    console.log('🔍 点击发送按钮，内容:', content);
+    console.log('🔍 用户登录状态:', isJoined);
+    console.log('🔍 当前用户名:', username);
+    
+    if (!isJoined) {
+        console.log('❌ 用户未加入聊天');
+        addSystemMessage('请先设置用户名！');
+        setUsername();
+        return;
+    }
+    
+    if (content) {
+        console.log('📤 准备发送消息:', {
+            content: content,
+            username: username
+        });
+        
+        socket.emit('send-message', { 
+            content: content
+        });
+        
+        console.log('✅ 消息已发送到服务器');
+        input.value = '';
+    } else {
+        console.log('❌ 消息内容为空');
+    }
+}
+
+        // 设置用户名
+        function setUsername() {
+            const newName = prompt('请输入你的用户名:', username);
+            if (newName && newName.trim()) {
+                username = newName.trim();
+                socket.emit('join-chat', { 
+                    username: username,
+                    userId: Date.now()
+                });
+                isJoined = true;
+                addSystemMessage(`你好 ${username}！开始聊天吧！`);
+            }
+        }
+
+        // 更新消息计数
+        function updateMessageCount() {
+            const count = document.querySelectorAll('.message').length - 1;
+            document.getElementById('messageCount').textContent = count;
+        }
+
+        // 回车发送消息
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // 自动设置用户名
+        setTimeout(setUsername, 1000);
+    </script>
+</body>
+</html>
