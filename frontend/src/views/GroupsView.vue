@@ -1,255 +1,268 @@
 <template>
-  <div class="groups-page">
+  <div class="collaboration-page">
     <!-- 页面头部 -->
     <div class="page-header">
-      <div class="header-content">
-        <h1>学习小组</h1>
-        <p>加入小组与同学一起学习，或创建自己的学习小组</p>
+      <div class="header-left">
+        <h1>协作学习空间</h1>
+        <p v-if="currentGroup">
+          {{ currentGroup.name }} · {{ onlineMembers.length }} 人在线
+        </p>
+        <p v-else>选择一个小组开始协作</p>
       </div>
-      <button class="btn btn-primary" @click="showCreateModal = true">
-        <span class="btn-icon">➕</span>
-        创建新小组
-      </button>
-    </div>
-
-    <!-- 搜索和筛选 -->
-    <div class="filters-section">
-      <div class="search-box">
-        <div class="search-icon">🔍</div>
-        <input
-          v-model="searchQuery"
-          type="text"
-          class="search-input"
-          placeholder="搜索小组名称、课程或描述..."
-        />
+      <div class="header-right">
+        <button class="btn btn-outline" @click="toggleSidebar">
+          {{ sidebarVisible ? "隐藏侧边栏" : "显示侧边栏" }}
+        </button>
         <button
-          v-if="searchQuery"
-          class="clear-search"
-          @click="searchQuery = ''"
+          class="btn btn-primary"
+          @click="startVideoCall"
+          v-if="!inVideoCall"
         >
-          ✕
+          🎥 开始视频会议
+        </button>
+        <button class="btn btn-danger" @click="endVideoCall" v-else>
+          📞 结束会议
         </button>
       </div>
+    </div>
 
-      <div class="filter-controls">
-        <select v-model="selectedCategory" class="filter-select">
-          <option value="">所有分类</option>
-          <option value="algorithm">算法</option>
-          <option value="web">Web开发</option>
-          <option value="database">数据库</option>
-          <option value="ai">人工智能</option>
-          <option value="math">数学</option>
-        </select>
-
-        <select v-model="sortBy" class="filter-select">
-          <option value="newest">最新创建</option>
-          <option value="popular">最受欢迎</option>
-          <option value="members">成员最多</option>
-        </select>
-
-        <div class="view-toggle">
+    <div
+      class="collaboration-layout"
+      :class="{ 'sidebar-hidden': !sidebarVisible }"
+    >
+      <!-- 主协作区域 -->
+      <div class="main-collaboration-area">
+        <!-- 协作工具标签页 -->
+        <div class="collaboration-tabs">
           <button
-            class="view-btn"
-            :class="{ active: viewMode === 'grid' }"
-            @click="viewMode = 'grid'"
+            v-for="tab in collaborationTabs"
+            :key="tab.id"
+            class="tab-button"
+            :class="{ active: activeTab === tab.id }"
+            @click="activeTab = tab.id"
           >
-            ▦ 网格
+            <span class="tab-icon">{{ tab.icon }}</span>
+            {{ tab.name }}
           </button>
-          <button
-            class="view-btn"
-            :class="{ active: viewMode === 'list' }"
-            @click="viewMode = 'list'"
-          >
-            ☰ 列表
-          </button>
+        </div>
+
+        <!-- 协作内容区域 -->
+        <div class="collaboration-content">
+          <!-- 共享白板 -->
+          <div v-if="activeTab === 'whiteboard'" class="whiteboard-container">
+            <div class="whiteboard-header">
+              <h3>共享白板</h3>
+              <div class="whiteboard-tools">
+                <button class="tool-btn" @click="changeBrushColor('#000000')">
+                  ⚫
+                </button>
+                <button class="tool-btn" @click="changeBrushColor('#ff0000')">
+                  🔴
+                </button>
+                <button class="tool-btn" @click="changeBrushColor('#0000ff')">
+                  🔵
+                </button>
+                <button class="tool-btn" @click="clearWhiteboard">
+                  🗑️ 清空
+                </button>
+              </div>
+            </div>
+            <div class="whiteboard-placeholder">
+              <div class="placeholder-content">
+                <div class="placeholder-icon">🎨</div>
+                <h4>共享白板</h4>
+                <p>与团队成员实时绘制和分享想法</p>
+                <button class="btn btn-primary" @click="initializeWhiteboard">
+                  启动白板
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 代码编辑器 -->
+          <div v-if="activeTab === 'code'" class="code-editor-container">
+            <div class="editor-header">
+              <h3>协作代码编辑器</h3>
+              <div class="editor-actions">
+                <select v-model="selectedLanguage" class="language-select">
+                  <option value="javascript">JavaScript</option>
+                  <option value="python">Python</option>
+                  <option value="java">Java</option>
+                  <option value="cpp">C++</option>
+                  <option value="html">HTML</option>
+                  <option value="css">CSS</option>
+                </select>
+                <button class="btn btn-outline">💾 保存</button>
+                <button class="btn btn-primary">▶️ 运行</button>
+              </div>
+            </div>
+            <div class="editor-placeholder">
+              <div class="placeholder-content">
+                <div class="placeholder-icon">💻</div>
+                <h4>实时代码编辑器</h4>
+                <p>与团队成员共同编写和调试代码</p>
+                <textarea
+                  v-model="codeContent"
+                  class="code-textarea"
+                  placeholder="开始编写代码..."
+                ></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- 文档协作 -->
+          <div v-if="activeTab === 'document'" class="document-container">
+            <div class="document-header">
+              <h3>协作文档</h3>
+              <div class="document-actions">
+                <button class="btn btn-outline">📄 新建文档</button>
+                <button class="btn btn-primary">💾 保存</button>
+              </div>
+            </div>
+            <div class="document-placeholder">
+              <div class="placeholder-content">
+                <div class="placeholder-icon">📝</div>
+                <h4>协作文档编辑</h4>
+                <p>与团队成员实时编辑文档</p>
+                <textarea
+                  v-model="documentContent"
+                  class="document-textarea"
+                  placeholder="开始编写文档内容..."
+                ></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 侧边栏 - 聊天和成员 -->
+      <div class="collaboration-sidebar" v-if="sidebarVisible">
+        <!-- 在线成员列表 -->
+        <div class="members-section">
+          <div class="section-header">
+            <h3>在线成员 ({{ onlineMembers.length }})</h3>
+            <span class="online-indicator">🟢</span>
+          </div>
+          <div class="members-list">
+            <div
+              v-for="member in onlineMembers"
+              :key="member.id"
+              class="member-item"
+            >
+              <div class="member-avatar">
+                {{ member.name.charAt(0).toUpperCase() }}
+              </div>
+              <div class="member-info">
+                <span class="member-name">{{ member.name }}</span>
+                <span class="member-status">{{ member.status }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 聊天区域 -->
+        <div class="chat-section">
+          <div class="section-header">
+            <h3>小组聊天</h3>
+            <button class="btn btn-sm btn-outline" @click="clearChat">
+              清空
+            </button>
+          </div>
+
+          <div class="chat-messages" ref="chatMessages">
+            <div
+              v-for="message in messages"
+              :key="message.id"
+              class="message"
+              :class="{ 'own-message': message.isOwn }"
+            >
+              <div class="message-avatar">
+                {{ message.sender.charAt(0).toUpperCase() }}
+              </div>
+              <div class="message-content">
+                <div class="message-header">
+                  <span class="sender-name">{{ message.sender }}</span>
+                  <span class="message-time">{{
+                    formatTime(message.timestamp)
+                  }}</span>
+                </div>
+                <div class="message-text">{{ message.text }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-input-container">
+            <div class="input-actions">
+              <button class="action-btn" @click="toggleEmojiPicker">😊</button>
+              <button class="action-btn" @click="attachFile">📎</button>
+            </div>
+            <textarea
+              v-model="newMessage"
+              @keypress.enter.prevent="sendMessage"
+              class="chat-input"
+              placeholder="输入消息... (按 Enter 发送)"
+              rows="3"
+            ></textarea>
+            <button
+              class="send-button"
+              @click="sendMessage"
+              :disabled="!newMessage.trim()"
+            >
+              ➤
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 小组列表 -->
-    <div class="groups-container">
-      <!-- 我的小组 -->
-      <section class="groups-section" v-if="myGroups.length > 0">
-        <div class="section-header">
-          <h2>我的小组</h2>
-          <span class="section-count">{{ myGroups.length }} 个小组</span>
-        </div>
-
-        <div class="groups-grid" :class="viewMode">
-          <GroupCard
-            v-for="group in myGroups"
-            :key="group.id"
-            :group="group"
-            :view-mode="viewMode"
-            :is-member="true"
-            @click="viewGroupDetail(group.id)"
-          />
-        </div>
-      </section>
-
-      <!-- 推荐小组 -->
-      <section class="groups-section">
-        <div class="section-header">
-          <h2>推荐小组</h2>
-          <span class="section-count">{{ filteredGroups.length }} 个小组</span>
-        </div>
-
-        <div v-if="loading" class="loading-state">
-          <div class="spinner"></div>
-          <p>加载小组中...</p>
-        </div>
-
-        <div v-else-if="filteredGroups.length === 0" class="empty-state">
-          <div class="empty-icon">👥</div>
-          <h3>没有找到匹配的小组</h3>
-          <p>尝试调整搜索条件或创建新的小组</p>
-          <button class="btn btn-primary" @click="showCreateModal = true">
-            创建第一个小组
-          </button>
-        </div>
-
-        <div v-else class="groups-grid" :class="viewMode">
-          <GroupCard
-            v-for="group in filteredGroups"
-            :key="group.id"
-            :group="group"
-            :view-mode="viewMode"
-            :is-member="false"
-            @join="handleJoinGroup(group.id)"
-            @view="viewGroupDetail(group.id)"
-          />
-        </div>
-      </section>
+    <!-- Emoji 选择器 -->
+    <div v-if="showEmojiPicker" class="emoji-picker">
+      <div class="emoji-grid">
+        <span
+          v-for="emoji in commonEmojis"
+          :key="emoji"
+          class="emoji"
+          @click="addEmoji(emoji)"
+        >
+          {{ emoji }}
+        </span>
+      </div>
     </div>
 
-    <!-- 创建小组模态框 -->
-    <ModalDialog v-model:visible="showCreateModal" title="创建新小组" size="md">
-      <form @submit.prevent="handleCreateGroup" class="create-group-form">
-        <div class="form-group">
-          <label for="groupName">小组名称 *</label>
-          <input
-            id="groupName"
-            v-model="newGroup.name"
-            type="text"
-            class="form-control"
-            placeholder="例如：算法学习小组"
-            required
-            maxlength="50"
-          />
-          <div class="char-count">{{ newGroup.name.length }}/50</div>
-        </div>
-
-        <div class="form-group">
-          <label for="groupDescription">小组描述</label>
-          <textarea
-            id="groupDescription"
-            v-model="newGroup.description"
-            class="form-control"
-            placeholder="描述小组的学习目标和主题..."
-            rows="3"
-            maxlength="200"
-          ></textarea>
-          <div class="char-count">{{ newGroup.description.length }}/200</div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="groupCategory">分类</label>
-            <select
-              id="groupCategory"
-              v-model="newGroup.category"
-              class="form-control"
-            >
-              <option value="algorithm">算法</option>
-              <option value="web">Web开发</option>
-              <option value="database">数据库</option>
-              <option value="ai">人工智能</option>
-              <option value="math">数学</option>
-              <option value="other">其他</option>
-            </select>
+    <!-- 视频会议模态框 -->
+    <ModalDialog v-model:visible="videoCallModal" title="视频会议" size="lg">
+      <div class="video-call-container">
+        <div class="video-grid">
+          <div class="video-item local-video">
+            <div class="video-placeholder">📹 本地视频</div>
+            <div class="video-info">你</div>
           </div>
-
-          <div class="form-group">
-            <label for="maxMembers">最大成员数</label>
-            <select
-              id="maxMembers"
-              v-model="newGroup.maxMembers"
-              class="form-control"
-            >
-              <option value="10">10人</option>
-              <option value="20">20人</option>
-              <option value="50">50人</option>
-              <option value="100">100人</option>
-            </select>
+          <div
+            v-for="member in videoParticipants"
+            :key="member.id"
+            class="video-item"
+          >
+            <div class="video-placeholder">📹 {{ member.name }} 的视频</div>
+            <div class="video-info">{{ member.name }}</div>
           </div>
         </div>
-
-        <div class="form-group">
-          <label for="courseCode">关联课程代码（可选）</label>
-          <input
-            id="courseCode"
-            v-model="newGroup.courseCode"
-            type="text"
-            class="form-control"
-            placeholder="例如：IEMS5731"
-          />
-        </div>
-
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input
-              v-model="newGroup.isPublic"
-              type="checkbox"
-              class="checkbox"
-            />
-            <span class="checkbox-text">公开小组（任何人都可以加入）</span>
-          </label>
-        </div>
-
-        <div class="modal-actions">
+        <div class="video-controls">
           <button
-            type="button"
-            class="btn btn-outline"
-            @click="showCreateModal = false"
+            class="control-btn"
+            :class="{ active: isMuted }"
+            @click="toggleMute"
           >
-            取消
+            {{ isMuted ? "🔇" : "🎤" }}
           </button>
           <button
-            type="submit"
-            class="btn btn-primary"
-            :disabled="!newGroup.name.trim() || creatingGroup"
+            class="control-btn"
+            :class="{ active: !isVideoOn }"
+            @click="toggleVideo"
           >
-            <span v-if="creatingGroup">
-              <span class="spinner"></span>
-              创建中...
-            </span>
-            <span v-else>创建小组</span>
+            {{ isVideoOn ? "📹" : "📷" }}
           </button>
-        </div>
-      </form>
-    </ModalDialog>
-
-    <!-- 加入小组确认模态框 -->
-    <ModalDialog v-model:visible="showJoinModal" title="加入小组" size="sm">
-      <div class="join-group-modal">
-        <p>
-          确定要加入 <strong>{{ selectedGroup?.name }}</strong> 小组吗？
-        </p>
-
-        <div class="modal-actions">
-          <button class="btn btn-outline" @click="showJoinModal = false">
-            取消
-          </button>
-          <button
-            class="btn btn-primary"
-            @click="confirmJoinGroup"
-            :disabled="joiningGroup"
-          >
-            <span v-if="joiningGroup">
-              <span class="spinner"></span>
-              加入中...
-            </span>
-            <span v-else>确认加入</span>
+          <button class="control-btn end-call" @click="endVideoCall">
+            📞 结束通话
           </button>
         </div>
       </div>
@@ -258,796 +271,861 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, reactive, onMounted, onUnmounted, nextTick } from "vue";
+import { useRoute } from "vue-router";
 import ModalDialog from "@/components/common/ModalDialog.vue";
 
-// 临时导入 GroupCard 组件（需要创建）
-const GroupCard = {
-  props: ["group", "viewMode", "isMember"],
-  emits: ["join", "view"],
-  template: `
-    <div class="group-card" :class="viewMode" @click="$emit('view')">
-      <div class="card-header">
-        <div class="group-avatar">
-          {{ group.name.charAt(0).toUpperCase() }}
-        </div>
-        <div class="group-info">
-          <h3 class="group-name">{{ group.name }}</h3>
-          <span class="group-category">{{ getCategoryLabel(group.category) }}</span>
-        </div>
-        <div class="group-actions" v-if="!isMember" @click.stop>
-          <button class="btn btn-primary btn-sm" @click="$emit('join')">
-            加入小组
-          </button>
-        </div>
-      </div>
-
-      <p class="group-description">{{ group.description }}</p>
-
-      <div class="group-meta">
-        <div class="meta-item">
-          <span class="meta-icon">👥</span>
-          <span>{{ group.memberCount }}/{{ group.maxMembers }}</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-icon">📅</span>
-          <span>{{ formatDate(group.createdAt) }}</span>
-        </div>
-        <div class="meta-item" v-if="group.courseCode">
-          <span class="meta-icon">📚</span>
-          <span>{{ group.courseCode }}</span>
-        </div>
-      </div>
-
-      <div class="group-tags">
-        <span class="tag" :class="group.category">
-          {{ getCategoryLabel(group.category) }}
-        </span>
-        <span class="tag" v-if="group.isPublic">公开</span>
-        <span class="tag private" v-else>私密</span>
-      </div>
-    </div>
-  `,
-  methods: {
-    getCategoryLabel(category) {
-      const categories = {
-        algorithm: "算法",
-        web: "Web开发",
-        database: "数据库",
-        ai: "人工智能",
-        math: "数学",
-        other: "其他",
-      };
-      return categories[category] || "其他";
-    },
-    formatDate(date) {
-      return new Date(date).toLocaleDateString("zh-CN");
-    },
-  },
-};
-
-const router = useRouter();
+const route = useRoute();
 
 // 响应式数据
-const searchQuery = ref("");
-const selectedCategory = ref("");
-const sortBy = ref("newest");
-const viewMode = ref("grid");
-const showCreateModal = ref(false);
-const showJoinModal = ref(false);
-const loading = ref(false);
-const creatingGroup = ref(false);
-const joiningGroup = ref(false);
+const sidebarVisible = ref(true);
+const activeTab = ref("whiteboard");
+const newMessage = ref("");
+const messages = ref([]);
+const onlineMembers = ref([]);
+const showEmojiPicker = ref(false);
+const videoCallModal = ref(false);
+const inVideoCall = ref(false);
+const isMuted = ref(false);
+const isVideoOn = ref(true);
+const chatMessages = ref(null);
 
-const selectedGroup = ref(null);
-
-// 模拟小组数据
-const myGroups = ref([
-  {
-    id: 1,
-    name: "算法学习小组",
-    description: "共同学习数据结构与算法，准备面试和竞赛",
-    category: "algorithm",
-    memberCount: 8,
-    maxMembers: 20,
-    courseCode: "IEMS5731",
-    isPublic: true,
-    createdAt: "2024-01-15",
-    createdBy: "我",
-  },
-  {
-    id: 2,
-    name: "Web全栈开发",
-    description: "学习前后端开发技术，构建完整的Web应用",
-    category: "web",
-    memberCount: 5,
-    maxMembers: 15,
-    courseCode: "IEMS5731",
-    isPublic: true,
-    createdAt: "2024-01-20",
-    createdBy: "我",
-  },
-]);
-
-const allGroups = ref([
-  {
-    id: 3,
-    name: "数据库设计与优化",
-    description: "深入学习数据库原理、SQL优化和NoSQL技术",
-    category: "database",
-    memberCount: 12,
-    maxMembers: 30,
-    courseCode: "IEMS5731",
-    isPublic: true,
-    createdAt: "2024-01-10",
-    createdBy: "张三",
-  },
-  {
-    id: 4,
-    name: "机器学习入门",
-    description: "从零开始学习机器学习算法和Python实现",
-    category: "ai",
-    memberCount: 25,
-    maxMembers: 50,
-    courseCode: "IEMS5731",
-    isPublic: true,
-    createdAt: "2024-01-08",
-    createdBy: "李四",
-  },
-  {
-    id: 5,
-    name: "高等数学研讨",
-    description: "讨论高等数学难题，共同准备期末考试",
-    category: "math",
-    memberCount: 6,
-    maxMembers: 10,
-    courseCode: "MATH101",
-    isPublic: false,
-    createdAt: "2024-01-18",
-    createdBy: "王五",
-  },
-  {
-    id: 6,
-    name: "Vue.js进阶学习",
-    description: "深入学习Vue 3组合式API和生态系统",
-    category: "web",
-    memberCount: 18,
-    maxMembers: 25,
-    courseCode: "IEMS5731",
-    isPublic: true,
-    createdAt: "2024-01-12",
-    createdBy: "赵六",
-  },
-]);
-
-const newGroup = reactive({
-  name: "",
-  description: "",
-  category: "algorithm",
-  maxMembers: 20,
-  courseCode: "",
-  isPublic: true,
+const currentGroup = ref({
+  id: route.params.groupId || "1",
+  name: "算法学习小组",
 });
 
-// 计算属性
-const filteredGroups = computed(() => {
-  let groups = allGroups.value.filter(
-    (group) => !myGroups.value.some((myGroup) => myGroup.id === group.id)
-  );
+const collaborationTabs = [
+  { id: "whiteboard", name: "共享白板", icon: "🎨" },
+  { id: "code", name: "代码编辑", icon: "💻" },
+  { id: "document", name: "文档协作", icon: "📝" },
+];
 
-  // 搜索过滤
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    groups = groups.filter(
-      (group) =>
-        group.name.toLowerCase().includes(query) ||
-        group.description.toLowerCase().includes(query) ||
-        (group.courseCode && group.courseCode.toLowerCase().includes(query))
-    );
-  }
+const codeContent = ref(
+  '// 在这里编写代码...\nconsole.log("Hello, LearnSync!")'
+);
+const documentContent = ref("在这里编写文档内容...");
+const selectedLanguage = ref("javascript");
 
-  // 分类过滤
-  if (selectedCategory.value) {
-    groups = groups.filter(
-      (group) => group.category === selectedCategory.value
-    );
-  }
+const videoParticipants = ref([
+  { id: 2, name: "张三" },
+  { id: 3, name: "李四" },
+]);
 
-  // 排序
-  switch (sortBy.value) {
-    case "newest":
-      groups.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      break;
-    case "popular":
-      groups.sort((a, b) => b.memberCount - a.memberCount);
-      break;
-    case "members":
-      groups.sort((a, b) => b.memberCount - a.memberCount);
-      break;
-  }
+const commonEmojis = [
+  "😀",
+  "😂",
+  "🤔",
+  "👍",
+  "❤️",
+  "🎉",
+  "🚀",
+  "💡",
+  "📚",
+  "👏",
+];
 
-  return groups;
-});
+// 模拟数据初始化
+const initializeData = () => {
+  // 模拟在线成员
+  onlineMembers.value = [
+    { id: 1, name: "我", status: "在线" },
+    { id: 2, name: "张三", status: "正在编辑" },
+    { id: 3, name: "李四", status: "在线" },
+    { id: 4, name: "王五", status: "离开" },
+  ];
+
+  // 模拟聊天消息
+  messages.value = [
+    {
+      id: 1,
+      sender: "张三",
+      text: "大家好！我们今天讨论什么算法问题？",
+      timestamp: new Date(Date.now() - 3600000),
+      isOwn: false,
+    },
+    {
+      id: 2,
+      sender: "我",
+      text: "我们可以讨论一下动态规划的问题",
+      timestamp: new Date(Date.now() - 3500000),
+      isOwn: true,
+    },
+    {
+      id: 3,
+      sender: "李四",
+      text: "好的，我最近在学背包问题",
+      timestamp: new Date(Date.now() - 3400000),
+      isOwn: false,
+    },
+  ];
+};
 
 // 方法
-const handleCreateGroup = async () => {
-  if (!newGroup.name.trim()) return;
-
-  creatingGroup.value = true;
-
-  try {
-    // 模拟API调用 - 需要成员B完成后替换
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const newGroupData = {
-      id: Date.now(),
-      ...newGroup,
-      memberCount: 1,
-      createdAt: new Date().toISOString().split("T")[0],
-      createdBy: "我",
-    };
-
-    myGroups.value.unshift(newGroupData);
-
-    // 重置表单
-    Object.assign(newGroup, {
-      name: "",
-      description: "",
-      category: "algorithm",
-      maxMembers: 20,
-      courseCode: "",
-      isPublic: true,
-    });
-
-    showCreateModal.value = false;
-
-    // 显示成功消息
-    alert("小组创建成功！");
-  } catch (error) {
-    console.error("创建小组失败:", error);
-    alert("创建失败，请稍后重试");
-  } finally {
-    creatingGroup.value = false;
-  }
+const toggleSidebar = () => {
+  sidebarVisible.value = !sidebarVisible.value;
 };
 
-const handleJoinGroup = (groupId) => {
-  const group = allGroups.value.find((g) => g.id === groupId);
-  if (group) {
-    selectedGroup.value = group;
-    showJoinModal.value = true;
-  }
-};
+const sendMessage = () => {
+  if (!newMessage.value.trim()) return;
 
-const confirmJoinGroup = async () => {
-  if (!selectedGroup.value) return;
+  const message = {
+    id: Date.now(),
+    sender: "我",
+    text: newMessage.value,
+    timestamp: new Date(),
+    isOwn: true,
+  };
 
-  joiningGroup.value = true;
+  messages.value.push(message);
+  newMessage.value = "";
 
-  try {
-    // 模拟API调用 - 需要成员B完成后替换
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    // 更新小组数据
-    const groupIndex = allGroups.value.findIndex(
-      (g) => g.id === selectedGroup.value.id
-    );
-    if (groupIndex !== -1) {
-      allGroups.value[groupIndex].memberCount++;
+  // 滚动到底部
+  nextTick(() => {
+    if (chatMessages.value) {
+      chatMessages.value.scrollTop = chatMessages.value.scrollHeight;
     }
+  });
 
-    // 添加到我的小组
-    myGroups.value.unshift({
-      ...selectedGroup.value,
-      memberCount: selectedGroup.value.memberCount + 1,
-    });
+  // 模拟回复（需要成员C完成后移除）
+  setTimeout(() => {
+    const reply = {
+      id: Date.now() + 1,
+      sender: "张三",
+      text: "收到了你的消息！",
+      timestamp: new Date(),
+      isOwn: false,
+    };
+    messages.value.push(reply);
+  }, 1000);
+};
 
-    showJoinModal.value = false;
-    selectedGroup.value = null;
-
-    // 显示成功消息
-    alert("成功加入小组！");
-  } catch (error) {
-    console.error("加入小组失败:", error);
-    alert("加入失败，请稍后重试");
-  } finally {
-    joiningGroup.value = false;
+const clearChat = () => {
+  if (confirm("确定要清空聊天记录吗？")) {
+    messages.value = [];
   }
 };
 
-const viewGroupDetail = (groupId) => {
-  router.push(`/groups/${groupId}`);
+const toggleEmojiPicker = () => {
+  showEmojiPicker.value = !showEmojiPicker.value;
+};
+
+const addEmoji = (emoji) => {
+  newMessage.value += emoji;
+  showEmojiPicker.value = false;
+};
+
+const attachFile = () => {
+  alert("文件上传功能待实现");
+};
+
+const formatTime = (date) => {
+  return new Date(date).toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const startVideoCall = () => {
+  videoCallModal.value = true;
+  inVideoCall.value = true;
+};
+
+const endVideoCall = () => {
+  videoCallModal.value = false;
+  inVideoCall.value = false;
+};
+
+const toggleMute = () => {
+  isMuted.value = !isMuted.value;
+};
+
+const toggleVideo = () => {
+  isVideoOn.value = !isVideoOn.value;
+};
+
+const initializeWhiteboard = () => {
+  alert("白板功能需要集成专门的绘图库");
+};
+
+const changeBrushColor = (color) => {
+  console.log("切换画笔颜色:", color);
+};
+
+const clearWhiteboard = () => {
+  if (confirm("确定要清空白板吗？")) {
+    console.log("清空白板");
+  }
 };
 
 // 生命周期
 onMounted(() => {
-  // 模拟加载数据
-  loading.value = true;
-  setTimeout(() => {
-    loading.value = false;
-  }, 1000);
+  initializeData();
+
+  // 模拟 Socket.io 连接（需要成员C完成后替换）
+  console.log("连接到协作空间:", currentGroup.value.id);
+});
+
+onUnmounted(() => {
+  // 清理资源
+  console.log("离开协作空间");
 });
 </script>
 
 <style lang="scss" scoped>
-.groups-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--space-lg);
+.collaboration-page {
+  height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: var(--space-xl);
+  align-items: center;
+  padding: 20px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
 
-  .header-content {
+  .header-left {
     h1 {
-      font-size: var(--font-size-2xl);
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: var(--space-sm);
+      font-size: 24px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
     }
 
     p {
-      color: var(--text-secondary);
+      color: #666;
       margin: 0;
-      font-size: var(--font-size-base);
+      font-size: 14px;
     }
   }
 
-  .btn {
-    .btn-icon {
-      margin-right: var(--space-sm);
-    }
+  .header-right {
+    display: flex;
+    gap: 12px;
   }
 }
 
-.filters-section {
-  background: var(--bg-card);
-  padding: var(--space-lg);
-  border-radius: var(--radius-lg);
-  margin-bottom: var(--space-xl);
-  border: 1px solid var(--border-color);
-}
-
-.search-box {
-  position: relative;
-  margin-bottom: var(--space-lg);
-
-  .search-icon {
-    position: absolute;
-    left: var(--space-md);
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-muted);
-  }
-
-  .search-input {
-    width: 100%;
-    padding: var(--space-md) var(--space-md) var(--space-md)
-      calc(var(--space-md) * 2 + 16px);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    font-size: var(--font-size-base);
-
-    &:focus {
-      outline: none;
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-    }
-  }
-
-  .clear-search {
-    position: absolute;
-    right: var(--space-md);
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: var(--space-xs);
-
-    &:hover {
-      color: var(--text-primary);
-    }
-  }
-}
-
-.filter-controls {
+.collaboration-layout {
   display: flex;
-  gap: var(--space-md);
-  align-items: center;
-  flex-wrap: wrap;
-}
+  flex: 1;
+  overflow: hidden;
 
-.filter-select {
-  padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: white;
-  font-size: var(--font-size-sm);
-}
+  &.sidebar-hidden {
+    .collaboration-sidebar {
+      display: none;
+    }
 
-.view-toggle {
-  display: flex;
-  background: var(--bg-hover);
-  border-radius: var(--radius-md);
-  padding: 2px;
-  margin-left: auto;
-}
-
-.view-btn {
-  padding: var(--space-sm) var(--space-md);
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  transition: all 0.3s ease;
-
-  &.active {
-    background: white;
-    box-shadow: var(--shadow-sm);
+    .main-collaboration-area {
+      width: 100%;
+    }
   }
 }
 
-.groups-container {
+.main-collaboration-area {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  background: white;
+  margin: 16px;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  overflow: hidden;
 }
 
-.groups-section {
+.collaboration-tabs {
+  display: flex;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+
+  .tab-button {
+    flex: 1;
+    padding: 16px 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 2px solid transparent;
+
+    &.active {
+      background: white;
+      border-bottom-color: #3498db;
+      color: #3498db;
+    }
+
+    &:hover:not(.active) {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .tab-icon {
+      margin-right: 8px;
+    }
+  }
+}
+
+.collaboration-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* 白板样式 */
+.whiteboard-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.whiteboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h3 {
+    margin: 0;
+    color: #333;
+  }
+}
+
+.whiteboard-tools {
+  display: flex;
+  gap: 8px;
+
+  .tool-btn {
+    padding: 8px 16px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: #f8f9fa;
+    }
+  }
+}
+
+.whiteboard-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border: 2px dashed #e0e0e0;
+  border-radius: 12px;
+
+  .placeholder-content {
+    text-align: center;
+
+    .placeholder-icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+    }
+
+    h4 {
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    p {
+      color: #666;
+      margin-bottom: 20px;
+    }
+  }
+}
+
+/* 代码编辑器样式 */
+.code-editor-container,
+.document-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-header,
+.document-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h3 {
+    margin: 0;
+    color: #333;
+  }
+}
+
+.editor-actions,
+.document-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.language-select {
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+}
+
+.editor-placeholder,
+.document-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border: 2px dashed #e0e0e0;
+  border-radius: 12px;
+
+  .placeholder-content {
+    width: 80%;
+    text-align: center;
+
+    .placeholder-icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+    }
+
+    h4 {
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    p {
+      color: #666;
+      margin-bottom: 20px;
+    }
+  }
+}
+
+.code-textarea,
+.document-textarea {
+  width: 100%;
+  height: 300px;
+  padding: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 14px;
+  resize: vertical;
+
+  &:focus {
+    outline: none;
+    border-color: #3498db;
+  }
+}
+
+/* 侧边栏样式 */
+.collaboration-sidebar {
+  width: 350px;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  margin: 16px;
+  margin-left: 0;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  overflow: hidden;
+}
+
+.members-section {
+  border-bottom: 1px solid #e0e0e0;
+
   .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-lg);
+    padding: 16px 20px;
+    background: #f8f9fa;
 
-    h2 {
-      font-size: var(--font-size-xl);
-      font-weight: 600;
-      color: var(--text-primary);
+    h3 {
       margin: 0;
-    }
-
-    .section-count {
-      color: var(--text-muted);
-      font-size: var(--font-size-sm);
+      font-size: 16px;
+      color: #333;
     }
   }
 }
 
-.groups-grid {
-  display: grid;
-  gap: var(--space-lg);
-
-  &.grid {
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  }
-
-  &.list {
-    grid-template-columns: 1fr;
-  }
+.members-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px;
 }
 
-// GroupCard 样式
-.group-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  cursor: pointer;
-  transition: all 0.3s ease;
+.member-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-    border-color: var(--primary-color);
+    background: #f8f9fa;
   }
 
-  &.list {
+  .member-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #3498db;
+    color: white;
     display: flex;
-    align-items: flex-start;
-    gap: var(--space-lg);
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin-right: 12px;
+  }
 
-    .card-header {
-      flex: 1;
+  .member-info {
+    flex: 1;
+
+    .member-name {
+      display: block;
+      font-weight: 500;
+      color: #333;
     }
 
-    .group-description {
-      flex: 2;
-      margin-bottom: 0;
-    }
-
-    .group-meta {
-      flex: 1;
+    .member-status {
+      font-size: 12px;
+      color: #999;
     }
   }
 }
 
-.card-header {
+.chat-section {
+  flex: 1;
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-md);
-  margin-bottom: var(--space-md);
+  flex-direction: column;
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: #f8f9fa;
+
+    h3 {
+      margin: 0;
+      font-size: 16px;
+      color: #333;
+    }
+  }
 }
 
-.group-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(
-    135deg,
-    var(--primary-color),
-    var(--secondary-color)
-  );
+.chat-messages {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.message {
+  display: flex;
+  margin-bottom: 16px;
+
+  &.own-message {
+    flex-direction: row-reverse;
+
+    .message-content {
+      background: #3498db;
+      color: white;
+
+      .message-header {
+        .sender-name {
+          color: rgba(255, 255, 255, 0.9);
+        }
+
+        .message-time {
+          color: rgba(255, 255, 255, 0.7);
+        }
+      }
+    }
+  }
+
+  .message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #95a5a6;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin: 0 8px;
+    flex-shrink: 0;
+  }
+
+  .message-content {
+    max-width: 70%;
+    background: #f8f9fa;
+    padding: 8px 16px;
+    border-radius: 12px;
+
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+
+      .sender-name {
+        font-weight: 500;
+        font-size: 14px;
+        color: #333;
+      }
+
+      .message-time {
+        font-size: 12px;
+        color: #999;
+      }
+    }
+
+    .message-text {
+      word-wrap: break-word;
+    }
+  }
+}
+
+.chat-input-container {
+  padding: 16px;
+  border-top: 1px solid #e0e0e0;
+  position: relative;
+}
+
+.input-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+
+  .action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+
+    &:hover {
+      background: #f8f9fa;
+    }
+  }
+}
+
+.chat-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  resize: none;
+
+  &:focus {
+    outline: none;
+    border-color: #3498db;
+  }
+}
+
+.send-button {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  background: #3498db;
   color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.group-info {
-  flex: 1;
-
-  .group-name {
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0 0 var(--space-xs) 0;
-  }
-
-  .group-category {
-    font-size: var(--font-size-sm);
-    color: var(--text-muted);
-    background: var(--bg-hover);
-    padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--radius-sm);
-  }
-}
-
-.group-actions {
-  flex-shrink: 0;
-}
-
-.group-description {
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: var(--space-lg);
-  display: -webkit-box;
-  -webkit-line-clamp: 3; // 限制为3行
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-clamp: 3; // 添加标准属性
-}
-
-.group-meta {
-  display: flex;
-  gap: var(--space-lg);
-  margin-bottom: var(--space-lg);
-
-  .meta-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    font-size: var(--font-size-sm);
-    color: var(--text-muted);
-
-    .meta-icon {
-      font-size: var(--font-size-base);
-    }
-  }
-}
-
-.group-tags {
-  display: flex;
-  gap: var(--space-sm);
-  flex-wrap: wrap;
-
-  .tag {
-    padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-
-    &.algorithm {
-      background: #e3f2fd;
-      color: #1976d2;
-    }
-    &.web {
-      background: #f3e5f5;
-      color: #7b1fa2;
-    }
-    &.database {
-      background: #e8f5e8;
-      color: #388e3c;
-    }
-    &.ai {
-      background: #fff3e0;
-      color: #f57c00;
-    }
-    &.math {
-      background: #fce4ec;
-      color: #c2185b;
-    }
-    &.other {
-      background: #f5f5f5;
-      color: #616161;
-    }
-
-    &.private {
-      background: #ffebee;
-      color: #d32f2f;
-    }
-  }
-}
-
-// 表单样式
-.create-group-form {
-  .form-group {
-    margin-bottom: var(--space-lg);
-
-    label {
-      display: block;
-      margin-bottom: var(--space-sm);
-      font-weight: 500;
-      color: var(--text-primary);
-    }
-  }
-
-  .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-lg);
-  }
-}
-
-.char-count {
-  text-align: right;
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
-  margin-top: var(--space-xs);
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-sm);
   cursor: pointer;
-  font-weight: normal;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
-.checkbox {
-  margin-top: 0.2rem;
+/* Emoji 选择器 */
+.emoji-picker {
+  position: absolute;
+  bottom: 80px;
+  right: 20px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  padding: 16px;
+  z-index: 1000;
 }
 
-.checkbox-text {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+
+  .emoji {
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    text-align: center;
+
+    &:hover {
+      background: #f8f9fa;
+    }
+  }
 }
 
-.modal-actions {
+/* 视频会议样式 */
+.video-call-container {
+  padding: 16px;
+}
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.video-item {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+
+  &.local-video {
+    border: 2px solid #3498db;
+  }
+
+  .video-placeholder {
+    font-size: 3rem;
+    margin-bottom: 16px;
+  }
+
+  .video-info {
+    color: #333;
+    font-weight: 500;
+  }
+}
+
+.video-controls {
   display: flex;
-  gap: var(--space-md);
-  justify-content: flex-end;
-  margin-top: var(--space-xl);
-}
+  justify-content: center;
+  gap: 16px;
 
-// 状态样式
-.loading-state {
-  text-align: center;
-  padding: var(--space-xl);
-  color: var(--text-muted);
+  .control-btn {
+    padding: 16px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
 
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--border-color);
-    border-top: 3px solid var(--primary-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto var(--space-md);
+    &.active {
+      background: #e74c3c;
+      color: white;
+    }
+
+    &.end-call {
+      background: #e74c3c;
+      color: white;
+
+      &:hover {
+        background: #c53030;
+      }
+    }
+
+    &:not(.end-call):not(.active) {
+      background: #3498db;
+      color: white;
+
+      &:hover {
+        background: #2980b9;
+      }
+    }
   }
 }
 
-.empty-state {
-  text-align: center;
-  padding: var(--space-xl);
+/* 按钮基础样式 */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
 
-  .empty-icon {
-    font-size: 4rem;
-    margin-bottom: var(--space-lg);
+  &.btn-primary {
+    background: #3498db;
+    color: white;
+
+    &:hover {
+      background: #2980b9;
+    }
   }
 
-  h3 {
-    color: var(--text-primary);
-    margin-bottom: var(--space-sm);
+  &.btn-outline {
+    background: transparent;
+    border: 1px solid #3498db;
+    color: #3498db;
+
+    &:hover {
+      background: #3498db;
+      color: white;
+    }
   }
 
-  p {
-    color: var(--text-secondary);
-    margin-bottom: var(--space-lg);
+  &.btn-danger {
+    background: #e74c3c;
+    color: white;
+
+    &:hover {
+      background: #c53030;
+    }
+  }
+
+  &.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
   }
 }
 
-.join-group-modal {
-  text-align: center;
-
-  p {
-    margin-bottom: var(--space-xl);
-    color: var(--text-primary);
-  }
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-// 响应式设计
+/* 响应式设计 */
 @media (max-width: 1024px) {
-  .groups-grid.grid {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  .collaboration-sidebar {
+    width: 300px;
   }
 }
 
 @media (max-width: 768px) {
-  .groups-page {
-    padding: var(--space-md);
+  .collaboration-layout {
+    flex-direction: column;
+
+    .collaboration-sidebar {
+      width: 100%;
+      margin: 16px 0;
+    }
   }
 
   .page-header {
     flex-direction: column;
-    gap: var(--space-md);
+    gap: 12px;
+    align-items: flex-start;
 
-    .btn {
-      align-self: stretch;
+    .header-right {
+      width: 100%;
+      justify-content: space-between;
     }
   }
 
-  .filter-controls {
-    flex-direction: column;
-    align-items: stretch;
-
-    .view-toggle {
-      margin-left: 0;
-      align-self: center;
+  .collaboration-tabs {
+    .tab-button {
+      padding: 12px 16px;
+      font-size: 14px;
     }
-  }
-
-  .form-row {
-    grid-template-columns: 1fr !important;
-  }
-
-  .groups-grid.grid {
-    grid-template-columns: 1fr;
-  }
-
-  .group-card.list {
-    flex-direction: column;
-  }
-
-  .modal-actions {
-    flex-direction: column;
-  }
-}
-
-@media (max-width: 480px) {
-  .group-meta {
-    flex-direction: column;
-    gap: var(--space-sm);
   }
 }
 </style>
