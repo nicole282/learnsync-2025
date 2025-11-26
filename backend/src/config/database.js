@@ -2,19 +2,27 @@ import mysql from 'mysql2/promise';
 import { DB_CONSTANTS } from './constants.js';
 
 // Database configuration
+// Database configuration
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'learnsync_dev',
+  user: process.env.DB_USER || 'learnsync_user',
+  password: process.env.DB_PASSWORD || 'learnsync123',
+  database: process.env.DB_NAME || 'learnsync',
   waitForConnections: true,
   connectionLimit: DB_CONSTANTS.MAX_CONNECTIONS,
   queueLimit: 0,
   acquireTimeout: DB_CONSTANTS.ACQUIRE_TIMEOUT,
   timeout: DB_CONSTANTS.TIMEOUT,
   charset: 'utf8mb4',
-  timezone: '+08:00' // Hong Kong timezone
+  timezone: '+08:00'
 };
+
+// 调试信息
+console.log('🔍 数据库配置:', {
+  user: dbConfig.user,
+  database: dbConfig.database,
+  hasPassword: !!dbConfig.password
+});
 
 let pool;
 
@@ -56,6 +64,9 @@ export async function createDatabaseConnection() {
 /**
  * Initialize all required database tables
  */
+/**
+ * Initialize all required database tables
+ */
 async function initializeTables() {
   try {
     console.log('📊 正在初始化数据库表...');
@@ -72,6 +83,38 @@ async function initializeTables() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_email (email),
         INDEX idx_username (username)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    
+    // Study groups table - 添加这表
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS study_groups (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(100) NOT NULL,
+        description TEXT,
+        course_code VARCHAR(20),
+        created_by INT NOT NULL,
+        max_members INT DEFAULT 20,
+        is_public BOOLEAN DEFAULT TRUE,
+        category ENUM('algorithm', 'web', 'database', 'ai', 'math', 'other') DEFAULT 'other',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_category (category),
+        INDEX idx_created_by (created_by)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    
+    // Group members table - 添加这表
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS group_members (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        group_id INT NOT NULL,
+        user_id INT NOT NULL,
+        role ENUM('owner', 'admin', 'member') DEFAULT 'member',
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_member (group_id, user_id),
+        INDEX idx_group_id (group_id),
+        INDEX idx_user_id (user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
     

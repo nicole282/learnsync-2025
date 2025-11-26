@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
+import GroupsView from "@/views/GroupsView.vue"; 
+import GroupDetailView from "@/views/GroupDetailView.vue"; 
 
 const routes = [
   {
@@ -26,13 +28,13 @@ const routes = [
   {
     path: "/groups",
     name: "Groups",
-    component: () => import("@/views/GroupsView.vue"),
+    component: GroupsView,
     meta: { requiresAuth: true },
   },
   {
     path: "/groups/:id",
     name: "GroupDetail",
-    component: () => import("@/views/GroupDetailView.vue"),
+    component: GroupDetailView,
     meta: { requiresAuth: true },
   },
   {

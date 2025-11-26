@@ -13,6 +13,8 @@ async function request(endpoint, options = {}) {
     ...options,
   };
 
+  
+
   // 添加认证token
   const token = getToken();
   if (token) {

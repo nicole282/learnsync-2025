@@ -1,259 +1,247 @@
 <template>
   <div class="group-detail-view">
-    <!-- 头部区域 -->
-    <div class="group-header">
-      <div class="group-cover">
-        <img
-          :src="group.coverImage"
-          :alt="group.name"
-          class="cover-image"
-          v-if="group.coverImage"
-        />
-        <div class="cover-placeholder" v-else>
-          <span>{{ group.name.charAt(0) }}</span>
-        </div>
-      </div>
-
-      <div class="group-info">
-        <h1 class="group-name">{{ group.name }}</h1>
-
-        <div class="group-meta">
-          <div class="meta-item">
-            <UserIcon class="icon" />
-            <span>{{ group.memberCount }} 成员</span>
-          </div>
-          <div class="meta-item">
-            <PostIcon class="icon" />
-            <span>{{ group.postCount }} 帖子</span>
-          </div>
-          <div class="meta-item" v-if="group.createdAt">
-            <CalendarIcon class="icon" />
-            <span>创建于 {{ formatDate(group.createdAt) }}</span>
-          </div>
-        </div>
-
-        <div class="group-actions">
-          <button class="btn btn-primary" v-if="!isMember" @click="joinGroup">
-            加入群组
-          </button>
-          <button class="btn btn-secondary" v-else @click="leaveGroup">
-            退出群组
-          </button>
-          <button class="btn btn-outline" v-if="isOwner">管理群组</button>
-        </div>
-      </div>
+    <!-- 加载状态 -->
+    <div v-if="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>加载小组详情中...</p>
     </div>
 
-    <!-- 内容区域 -->
-    <div class="group-content">
-      <div class="content-sidebar">
-        <!-- 群组描述 -->
-        <div class="info-card">
-          <h3 class="card-title">群组描述</h3>
-          <p class="group-description">
-            {{ group.description }}
-          </p>
+    <!-- 错误状态 -->
+    <div v-else-if="error" class="error-state">
+      <p>加载失败: {{ error }}</p>
+      <button class="btn btn-primary" @click="fetchGroupDetail">重试</button>
+    </div>
+
+    <!-- 正常内容 -->
+    <div v-else-if="group.id" class="group-content">
+      <!-- 头部区域 -->
+      <div class="group-header">
+        <div class="group-cover">
+          <div class="cover-placeholder">
+            <span>{{ group.name.charAt(0).toUpperCase() }}</span>
+          </div>
         </div>
 
-        <!-- 群组规则 -->
-        <div class="info-card" v-if="group.rules">
-          <h3 class="card-title">群组规则</h3>
-          <ul class="group-rules">
-            <li v-for="(rule, index) in group.rules" :key="index">
-              {{ rule }}
-            </li>
-          </ul>
-        </div>
+        <div class="group-info">
+          <h1 class="group-name">{{ group.name }}</h1>
 
-        <!-- 群组成员 -->
-        <div class="info-card">
-          <h3 class="card-title">群组成员</h3>
-          <div class="member-list">
-            <div
-              v-for="member in recentMembers"
-              :key="member.id"
-              class="member-item"
-            >
-              <img
-                :src="member.avatar"
-                :alt="member.name"
-                class="member-avatar"
-              />
-              <span class="member-name">{{ member.name }}</span>
+          <div class="group-meta">
+            <div class="meta-item">
+              <span class="meta-icon">👥</span>
+              <span>{{ group.member_count }} 成员</span>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="content-main">
-        <!-- 发布新帖子 -->
-        <div class="create-post-card" v-if="isMember">
-          <div class="post-input">
-            <img
-              :src="currentUser.avatar"
-              :alt="currentUser.name"
-              class="user-avatar"
-            />
-            <input
-              type="text"
-              placeholder="分享你的想法..."
-              @click="showPostModal = true"
-            />
-          </div>
-        </div>
-
-        <!-- 帖子列表 -->
-        <div class="posts-section">
-          <div class="section-header">
-            <h2 class="section-title">群组帖子</h2>
-            <div class="sort-options">
-              <button
-                class="sort-btn"
-                :class="{ active: sortBy === 'recent' }"
-                @click="sortBy = 'recent'"
-              >
-                最新
-              </button>
-              <button
-                class="sort-btn"
-                :class="{ active: sortBy === 'popular' }"
-                @click="sortBy = 'popular'"
-              >
-                热门
-              </button>
+            <div class="meta-item">
+              <span class="meta-icon">📅</span>
+              <span>创建于 {{ formatDate(group.created_at) }}</span>
+            </div>
+            <div class="meta-item" v-if="group.course_code">
+              <span class="meta-icon">📚</span>
+              <span>{{ group.course_code }}</span>
             </div>
           </div>
 
-          <div class="posts-list">
-            <PostItem v-for="post in sortedPosts" :key="post.id" :post="post" />
-          </div>
-
-          <div class="load-more" v-if="hasMorePosts">
-            <button class="btn btn-outline" @click="loadMorePosts">
-              加载更多
+          <div class="group-actions">
+            <button class="btn btn-primary" v-if="!isMember" @click="joinGroup">
+              加入小组
             </button>
+            <button class="btn btn-secondary" v-else-if="!isOwner" @click="leaveGroup">
+              退出小组
+            </button>
+            
+          </div>
+        </div>
+      </div>
+
+      <!-- 内容区域 -->
+      <div class="group-content-body">
+        <div class="content-sidebar">
+          <!-- 小组描述 -->
+          <div class="info-card">
+            <h3 class="card-title">小组描述</h3>
+            <p class="group-description">
+              {{ group.description || '暂无描述' }}
+            </p>
+          </div>
+
+          <!-- 小组信息 -->
+          <div class="info-card">
+            <h3 class="card-title">小组信息</h3>
+            <div class="group-info-list">
+              <div class="info-item">
+                <span class="info-label">创建者:</span>
+                <span class="info-value">{{ group.created_by_name }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">最大成员:</span>
+                <span class="info-value">{{ group.max_members }} 人</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">分类:</span>
+                <span class="info-value">{{ getCategoryLabel(group.category) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">状态:</span>
+                <span class="info-value">{{ group.is_public ? '公开' : '私密' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="content-main">
+          <div class="info-card">
+            <h3>小组功能</h3>
+            <p>当前小组: <strong>{{ group.name }}</strong></p>
+            <p>小组ID: {{ group.id }}</p>
+            <p>更多功能开发中...</p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 发布帖子模态框 -->
-    <PostModal
-      v-if="showPostModal"
-      @close="showPostModal = false"
-      @submit="createPost"
-    />
+    <!-- 数据为空状态 -->
+    <div v-else class="empty-state">
+      <p>未找到小组信息</p>
+    </div>
   </div>
 </template>
 
-<script>
-import { UserIcon, PostIcon, CalendarIcon } from "@/components/icons";
-import PostItem from "@/components/PostItem";
-import PostModal from "@/components/PostModal";
+<script setup>
+import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { api } from '@/services/api.js'
 
-export default {
-  name: "GroupDetailView",
-  components: {
-    UserIcon,
-    PostIcon,
-    CalendarIcon,
-    PostItem,
-    PostModal,
-  },
-  data() {
-    return {
-      group: {
-        id: 1,
-        name: "前端开发交流群",
-        description:
-          "这是一个专注于前端开发技术交流的群组，我们分享最新的前端技术、开发经验和学习资源。欢迎所有对前端开发感兴趣的朋友加入我们，一起学习进步！",
-        coverImage: "/images/group-cover.jpg",
-        memberCount: 245,
-        postCount: 156,
-        createdAt: "2023-01-15",
-        rules: [
-          "禁止发布广告内容",
-          "尊重他人，友好交流",
-          "分享内容需与前端开发相关",
-          "禁止发布不当言论",
-        ],
-      },
-      recentMembers: [
-        { id: 1, name: "张三", avatar: "/images/avatar1.jpg" },
-        { id: 2, name: "李四", avatar: "/images/avatar2.jpg" },
-        { id: 3, name: "王五", avatar: "/images/avatar3.jpg" },
-        { id: 4, name: "赵六", avatar: "/images/avatar4.jpg" },
-      ],
-      posts: [],
-      sortBy: "recent",
-      showPostModal: false,
-      hasMorePosts: true,
-      currentUser: {
-        id: 1,
-        name: "当前用户",
-        avatar: "/images/current-user.jpg",
-      },
-    };
-  },
-  computed: {
-    isMember() {
-      // 实际项目中这里应该检查当前用户是否为群组成员
-      return true;
-    },
-    isOwner() {
-      // 实际项目中这里应该检查当前用户是否为群组所有者
-      return false;
-    },
-    sortedPosts() {
-      // 根据排序选项对帖子进行排序
-      if (this.sortBy === "recent") {
-        return [...this.posts].sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-      } else {
-        return [...this.posts].sort((a, b) => b.likes - a.likes);
-      }
-    },
-  },
-  methods: {
-    joinGroup() {
-      // 加入群组的逻辑
-      console.log("加入群组");
-    },
-    leaveGroup() {
-      // 退出群组的逻辑
-      console.log("退出群组");
-    },
-    createPost(postData) {
-      // 创建新帖子的逻辑
-      console.log("创建帖子:", postData);
-      this.showPostModal = false;
-    },
-    loadMorePosts() {
-      // 加载更多帖子的逻辑
-      console.log("加载更多帖子");
-    },
-    formatDate(dateString) {
-      // 格式化日期的逻辑
-      return new Date(dateString).toLocaleDateString("zh-CN");
-    },
-  },
-  mounted() {
-    // 组件挂载后获取群组数据
-    // 实际项目中这里应该调用API
-    console.log("GroupDetailView mounted");
-  },
+const route = useRoute()
+const group = ref({})
+const loading = ref(true)
+const error = ref(null)
+
+// 计算属性
+const isMember = computed(() => {
+  // 简化逻辑，实际应该检查当前用户是否在小组中
+  return false
+})
+
+// 方法
+const getCategoryLabel = (category) => {
+  const categories = {
+    algorithm: "算法",
+    web: "Web开发",
+    database: "数据库",
+    ai: "人工智能", 
+    math: "数学",
+    other: "其他",
+  };
+  return categories[category] || "其他";
+}
+
+const joinGroup = async () => {
+  try {
+    await api.post(`/groups/${route.params.id}/join`)
+    alert('成功加入小组！')
+    fetchGroupDetail() // 刷新数据
+  } catch (error) {
+    console.error('加入小组失败:', error)
+    alert('加入失败: ' + (error.message || '未知错误'))
+  }
+}
+
+
+const formatDate = (date) => {
+  if (!date) return '未知'
+  return new Date(date).toLocaleDateString('zh-CN')
+}
+
+const fetchGroupDetail = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    console.log('🔄 获取小组详情，ID:', route.params.id)
+    const data = await api.get(`/groups/${route.params.id}`)
+    console.log('✅ 小组详情数据:', data)
+    group.value = data.group || {}
+  } catch (err) {
+    console.error('获取小组详情失败:', err)
+    error.value = err.message || '加载失败'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  console.log('📍 小组详情页加载，ID:', route.params.id)
+  fetchGroupDetail()
+})
+
+// 退出小组
+const leaveGroup = async () => {
+  if (!confirm('确定要退出这个小组吗？')) {
+    return;
+  }
+
+  try {
+    console.log('🚪 正在退出小组:', route.params.id);
+    await api.post(`/groups/${route.params.id}/leave`);
+    
+    alert('成功退出小组！');
+    // 跳转回小组列表
+    router.push('/groups');
+  } catch (error) {
+    console.error('退出小组失败:', error);
+    alert('退出失败: ' + (error.message || '未知错误'));
+  }
+};
+
+// 添加计算属性判断是否是创建者
+const isOwner = computed(() => {
+  return group.value.created_by === 1; // 假设当前用户ID是1
+});
+
+// 删除小组（在详情页）
+const deleteGroup = async () => {
+  if (!confirm('确定要删除这个小组吗？此操作不可恢复！')) {
+    return;
+  }
+
+  try {
+    await api.delete(`/groups/${route.params.id}`);
+    alert('小组删除成功！');
+    router.push('/groups');
+  } catch (error) {
+    console.error('删除小组失败:', error);
+    alert('删除失败: ' + (error.message || '未知错误'));
+  }
 };
 </script>
 
 <style scoped>
+/* 加载和错误状态样式 */
+.loading-state, .error-state, .empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 其他样式保持不变 */
 .group-detail-view {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 20px;
 }
 
-/* 头部样式 */
 .group-header {
   display: flex;
   margin-bottom: 30px;
@@ -265,12 +253,6 @@ export default {
 .group-cover {
   width: 300px;
   flex-shrink: 0;
-}
-
-.cover-image {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
 }
 
 .cover-placeholder {
@@ -315,11 +297,6 @@ export default {
   font-size: 14px;
 }
 
-.icon {
-  width: 16px;
-  height: 16px;
-}
-
 .group-actions {
   display: flex;
   gap: 12px;
@@ -352,18 +329,8 @@ export default {
   background-color: var(--secondary-dark);
 }
 
-.btn-outline {
-  background-color: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-}
-
-.btn-outline:hover {
-  background-color: var(--bg-hover);
-}
-
-/* 内容区域样式 */
-.group-content {
+/* 内容区域 */
+.group-content-body {
   display: flex;
   gap: 24px;
 }
@@ -395,136 +362,29 @@ export default {
 .group-description {
   color: var(--text-secondary);
   line-height: 1.5;
-  margin-bottom: var(--space-lg);
-  display: -webkit-box;
-  -webkit-line-clamp: 3; /* 限制为3行 */
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-clamp: 3; /* 标准属性 */
 }
 
-.group-rules {
-  padding-left: 20px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
-.group-rules li {
-  margin-bottom: 8px;
-}
-
-.member-list {
+.group-info-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.member-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.member-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.member-name {
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-/* 发布帖子区域 */
-.create-post-card {
-  background: white;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.post-input {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.user-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.post-input input {
-  flex: 1;
-  padding: 12px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 24px;
-  background-color: var(--bg-secondary);
-  cursor: pointer;
-}
-
-.post-input input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-}
-
-/* 帖子区域 */
-.posts-section {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.section-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.sort-options {
-  display: flex;
   gap: 8px;
 }
 
-.sort-btn {
-  padding: 6px 12px;
-  border-radius: 6px;
-  background: transparent;
-  border: 1px solid var(--border-color);
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.info-label {
   color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
+  font-size: 14px;
 }
 
-.sort-btn.active {
-  background-color: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
-
-.posts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.load-more {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
+.info-value {
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
 /* 响应式设计 */
@@ -537,16 +397,12 @@ export default {
     width: 100%;
   }
 
-  .group-content {
+  .group-content-body {
     flex-direction: column;
   }
 
   .content-sidebar {
     width: 100%;
-  }
-
-  .group-meta {
-    flex-wrap: wrap;
   }
 }
 </style>

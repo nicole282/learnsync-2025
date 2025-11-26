@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import app from './app.js';
+import { createDatabaseConnection } from './config/database.js'; // 添加这行
 
 // Load environment variables first
 dotenv.config();
@@ -153,16 +154,32 @@ const gracefulShutdown = (signal) => {
   }, 10000);
 };
 
-// Start server
-server.listen(PORT, () => {
-  console.log('🚀 LearnSync 后端服务器启动成功!');
-  console.log(`📍 环境: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📍 端口: ${PORT}`);
-  console.log(`📍 健康检查: http://localhost:${PORT}/api/health`);
-  console.log(`📍 前端地址: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
-  console.log('💬 实时聊天功能已启用');
-  console.log('📝 按 Ctrl+C 停止服务器\n');
-});
+// Start server - 修改这部分
+const startServer = async () => {
+  try {
+    // 先连接数据库
+    console.log('🔗 正在连接数据库...');
+    await createDatabaseConnection();
+    console.log('✅ 数据库连接成功');
+
+    // 启动服务器
+    server.listen(PORT, () => {
+      console.log('🚀 LearnSync 后端服务器启动成功!');
+      console.log(`📍 环境: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`📍 端口: ${PORT}`);
+      console.log(`📍 健康检查: http://localhost:${PORT}/api/health`);
+      console.log(`📍 前端地址: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+      console.log('💬 实时聊天功能已启用');
+      console.log('📝 按 Ctrl+C 停止服务器\n');
+    });
+  } catch (error) {
+    console.error('❌ 服务器启动失败:', error);
+    process.exit(1);
+  }
+};
+
+// 启动服务器
+startServer();
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

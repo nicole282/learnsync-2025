@@ -2,14 +2,18 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import groupRoutes from './routes/groups.js';
 import { createDatabaseConnection } from './config/database.js';
+
+
 
 // Import routes
 import authRoutes from './routes/auth.js';
 
+// 1. 先创建 app 实例
 const app = express();
 
-// Security middleware
+// 2. 配置中间件
 app.use(helmet());
 
 // CORS configuration
@@ -31,6 +35,8 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
+
+
 app.use(limiter);
 
 // Body parsing middleware
@@ -38,7 +44,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Database connection
-createDatabaseConnection();
+//createDatabaseConnection();
+
+// 3. 注册路由（在 app 定义之后）
+app.use('/api/groups', groupRoutes);
+app.use('/api/auth', authRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -51,17 +61,16 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// API routes
-app.use('/api/auth', authRoutes);
+// 删除重复的健康检查端点（第8-10行）
 
 // 404 handler for API routes
-app.use('/api/*', (req, res) => {
-  res.status(404).json({
-    error: 'API端点不存在',
-    path: req.originalUrl,
-    method: req.method
-  });
-});
+//app.use('/api/:any*', (req, res) => {
+  //res.status(404).json({
+    //error: 'API端点不存在',
+    //path: req.originalUrl,
+    //method: req.method
+  //});
+//});
 
 // Global error handler
 app.use((error, req, res, next) => {

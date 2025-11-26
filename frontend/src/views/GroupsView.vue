@@ -82,7 +82,8 @@
             :group="group"
             :view-mode="viewMode"
             :is-member="true"
-            @click="viewGroupDetail(group.id)"
+            @view="viewGroupDetail(group.id)" 
+            @delete="deleteGroup(group.id)" 
           />
         </div>
       </section>
@@ -261,71 +262,8 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import ModalDialog from "@/components/common/ModalDialog.vue";
-
-// 临时导入 GroupCard 组件（需要创建）
-const GroupCard = {
-  props: ["group", "viewMode", "isMember"],
-  emits: ["join", "view"],
-  template: `
-    <div class="group-card" :class="viewMode" @click="$emit('view')">
-      <div class="card-header">
-        <div class="group-avatar">
-          {{ group.name.charAt(0).toUpperCase() }}
-        </div>
-        <div class="group-info">
-          <h3 class="group-name">{{ group.name }}</h3>
-          <span class="group-category">{{ getCategoryLabel(group.category) }}</span>
-        </div>
-        <div class="group-actions" v-if="!isMember" @click.stop>
-          <button class="btn btn-primary btn-sm" @click="$emit('join')">
-            加入小组
-          </button>
-        </div>
-      </div>
-
-      <p class="group-description">{{ group.description }}</p>
-
-      <div class="group-meta">
-        <div class="meta-item">
-          <span class="meta-icon">👥</span>
-          <span>{{ group.memberCount }}/{{ group.maxMembers }}</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-icon">📅</span>
-          <span>{{ formatDate(group.createdAt) }}</span>
-        </div>
-        <div class="meta-item" v-if="group.courseCode">
-          <span class="meta-icon">📚</span>
-          <span>{{ group.courseCode }}</span>
-        </div>
-      </div>
-
-      <div class="group-tags">
-        <span class="tag" :class="group.category">
-          {{ getCategoryLabel(group.category) }}
-        </span>
-        <span class="tag" v-if="group.isPublic">公开</span>
-        <span class="tag private" v-else>私密</span>
-      </div>
-    </div>
-  `,
-  methods: {
-    getCategoryLabel(category) {
-      const categories = {
-        algorithm: "算法",
-        web: "Web开发",
-        database: "数据库",
-        ai: "人工智能",
-        math: "数学",
-        other: "其他",
-      };
-      return categories[category] || "其他";
-    },
-    formatDate(date) {
-      return new Date(date).toLocaleDateString("zh-CN");
-    },
-  },
-};
+import GroupCard from "@/components/groups/GroupCard.vue";
+import { api } from "@/services/api.js"; 
 
 const router = useRouter();
 
@@ -341,85 +279,31 @@ const creatingGroup = ref(false);
 const joiningGroup = ref(false);
 
 const selectedGroup = ref(null);
-
+const myGroups = ref([]);
+const allGroups = ref([]);
 // 模拟小组数据
-const myGroups = ref([
-  {
-    id: 1,
-    name: "算法学习小组",
-    description: "共同学习数据结构与算法，准备面试和竞赛",
-    category: "algorithm",
-    memberCount: 8,
-    maxMembers: 20,
-    courseCode: "IEMS5731",
-    isPublic: true,
-    createdAt: "2024-01-15",
-    createdBy: "我",
-  },
-  {
-    id: 2,
-    name: "Web全栈开发",
-    description: "学习前后端开发技术，构建完整的Web应用",
-    category: "web",
-    memberCount: 5,
-    maxMembers: 15,
-    courseCode: "IEMS5731",
-    isPublic: true,
-    createdAt: "2024-01-20",
-    createdBy: "我",
-  },
-]);
+const fetchGroups = async () => {
+  loading.value = true;
+  try {
+    console.log('🔄 开始获取小组数据...');
+    const data = await api.get('/groups');
+    console.log('📦 API返回数据:', data);
+    
+    allGroups.value = data.groups || [];
+    
+    // 方法1：临时将前2个小组设为"我的小组"
+    myGroups.value = data.groups.filter(group => group.created_by === 1) || [];
 
-const allGroups = ref([
-  {
-    id: 3,
-    name: "数据库设计与优化",
-    description: "深入学习数据库原理、SQL优化和NoSQL技术",
-    category: "database",
-    memberCount: 12,
-    maxMembers: 30,
-    courseCode: "IEMS5731",
-    isPublic: true,
-    createdAt: "2024-01-10",
-    createdBy: "张三",
-  },
-  {
-    id: 4,
-    name: "机器学习入门",
-    description: "从零开始学习机器学习算法和Python实现",
-    category: "ai",
-    memberCount: 25,
-    maxMembers: 50,
-    courseCode: "IEMS5731",
-    isPublic: true,
-    createdAt: "2024-01-08",
-    createdBy: "李四",
-  },
-  {
-    id: 5,
-    name: "高等数学研讨",
-    description: "讨论高等数学难题，共同准备期末考试",
-    category: "math",
-    memberCount: 6,
-    maxMembers: 10,
-    courseCode: "MATH101",
-    isPublic: false,
-    createdAt: "2024-01-18",
-    createdBy: "王五",
-  },
-  {
-    id: 6,
-    name: "Vue.js进阶学习",
-    description: "深入学习Vue 3组合式API和生态系统",
-    category: "web",
-    memberCount: 18,
-    maxMembers: 25,
-    courseCode: "IEMS5731",
-    isPublic: true,
-    createdAt: "2024-01-12",
-    createdBy: "赵六",
-  },
-]);
+    
+    console.log('🔄 我的小组:', myGroups.value.length);
+    console.log('🔄 所有小组:', allGroups.value.length);
+  } catch (error) {
+    console.error('获取小组数据失败:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
 
 const newGroup = reactive({
   name: "",
@@ -477,33 +361,42 @@ const handleCreateGroup = async () => {
   creatingGroup.value = true;
 
   try {
-    // 模拟API调用 - 需要成员B完成后替换
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const newGroupData = {
-      id: Date.now(),
-      ...newGroup,
-      memberCount: 1,
-      createdAt: new Date().toISOString().split("T")[0],
-      createdBy: "我",
+    console.log('🔄 正在创建小组:', newGroup);
+    
+    // 清理数据，确保没有 undefined
+    const cleanGroupData = {
+      name: newGroup.name.trim(),
+      description: newGroup.description || '',  // 确保不是 undefined
+      course_code: newGroup.course_code || '',  // 确保不是 undefined
+      category: newGroup.category || 'other',
+      max_members: newGroup.max_members || 20,
+      is_public: newGroup.is_public !== false  // 确保布尔值
     };
-
-    myGroups.value.unshift(newGroupData);
+    
+    console.log('🧹 清理后的数据:', cleanGroupData);
+    
+    const data = await api.post('/groups', cleanGroupData);
+    console.log('✅ 创建成功，返回数据:', data);
+    
+    const createdGroup = data.group;
+    
+    // 添加到我的小组和所有小组
+    myGroups.value.unshift(createdGroup);
+    allGroups.value.unshift(createdGroup);
 
     // 重置表单
     Object.assign(newGroup, {
       name: "",
       description: "",
       category: "algorithm",
-      maxMembers: 20,
-      courseCode: "",
-      isPublic: true,
+      max_members: 20,
+      course_code: "",
+      is_public: true,
     });
 
     showCreateModal.value = false;
-
-    // 显示成功消息
     alert("小组创建成功！");
+    
   } catch (error) {
     console.error("创建小组失败:", error);
     alert("创建失败，请稍后重试");
@@ -511,6 +404,8 @@ const handleCreateGroup = async () => {
     creatingGroup.value = false;
   }
 };
+
+
 
 const handleJoinGroup = (groupId) => {
   const group = allGroups.value.find((g) => g.id === groupId);
@@ -527,8 +422,9 @@ const confirmJoinGroup = async () => {
 
   try {
     // 模拟API调用 - 需要成员B完成后替换
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
+    // await new Promise((resolve) => setTimeout(resolve, 800));
+       await api.post(`/groups/${selectedGroup.value.id}/join`);
+       console.log('✅ 成功加入小组');
     // 更新小组数据
     const groupIndex = allGroups.value.findIndex(
       (g) => g.id === selectedGroup.value.id
@@ -562,12 +458,33 @@ const viewGroupDetail = (groupId) => {
 
 // 生命周期
 onMounted(() => {
-  // 模拟加载数据
-  loading.value = true;
-  setTimeout(() => {
-    loading.value = false;
-  }, 1000);
+  console.log('🎯 GroupsView 组件已挂载，开始获取数据...');
+  fetchGroups();
 });
+
+// 删除小组
+const deleteGroup = async (groupId) => {
+  if (!confirm('确定要删除这个小组吗？此操作不可恢复！')) {
+    return;
+  }
+
+  try {
+    console.log('🗑️ 正在删除小组:', groupId);
+    // await api.delete(`/groups/${groupId}`);
+    // 改为POST
+    await api.post(`/groups/${groupId}/delete`);  
+    // 从列表中移除
+    myGroups.value = myGroups.value.filter(group => group.id !== groupId);
+    allGroups.value = allGroups.value.filter(group => group.id !== groupId);
+    
+    alert('小组删除成功！');
+  } catch (error) {
+    console.error('删除小组失败:', error);
+    alert('删除失败: ' + (error.message || '未知错误'));
+  }
+};
+
+// 在 GroupCard 组件中添加删除按钮（需要修改 GroupCard.vue）
 </script>
 
 <style lang="scss" scoped>
