@@ -1,267 +1,199 @@
 <template>
   <div class="dashboard-page">
-    <div class="page-header">
-      <h1>学习仪表盘</h1>
-      <p>欢迎回到 LearnSync，继续你的学习之旅</p>
-    </div>
-
-    <div class="dashboard-grid">
-      <!-- 统计卡片 -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon">👥</div>
-          <div class="stat-info">
-            <div class="stat-value">3</div>
-            <div class="stat-label">学习小组</div>
-          </div>
+    <div class="welcome-container">
+      <!-- Logo 和标题区域 -->
+      <div class="brand-section">
+        <div class="logo">
+          <span class="logo-icon">📚</span>
+          <h1 class="app-name">LearnSync</h1>
         </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">📚</div>
-          <div class="stat-info">
-            <div class="stat-value">12</div>
-            <div class="stat-label">学习资源</div>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">⏱️</div>
-          <div class="stat-info">
-            <div class="stat-value">8.5</div>
-            <div class="stat-label">学习时长(小时)</div>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">✅</div>
-          <div class="stat-info">
-            <div class="stat-value">75%</div>
-            <div class="stat-label">任务完成率</div>
-          </div>
-        </div>
+        <p class="welcome-message">欢迎回到 LearnSync，继续你的学习之旅</p>
       </div>
 
-      <!-- 最近活动 -->
-      <div class="dashboard-section">
-        <h2>最近活动</h2>
-        <div class="activity-list">
-          <div class="activity-item">
-            <div class="activity-icon">💬</div>
-            <div class="activity-content">
-              <p>在 <strong>算法学习小组</strong> 中发布了新消息</p>
-              <span class="activity-time">2分钟前</span>
-            </div>
-          </div>
-          <div class="activity-item">
-            <div class="activity-icon">📝</div>
-            <div class="activity-content">
-              <p>完成了 <strong>Vue.js 项目作业</strong></p>
-              <span class="activity-time">1小时前</span>
-            </div>
-          </div>
-          <div class="activity-item">
-            <div class="activity-icon">👥</div>
-            <div class="activity-content">
-              <p>加入了 <strong>Web开发进阶</strong> 小组</p>
-              <span class="activity-time">3小时前</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- 快速操作区域 -->
+      <div class="quick-actions">
+        <router-link to="/groups" class="action-card">
+          <div class="action-icon">👥</div>
+          <h3>学习小组</h3>
+          <p>加入或创建学习小组</p>
+        </router-link>
 
-      <!-- 快速操作 -->
-      <div class="dashboard-section">
-        <h2>快速操作</h2>
-        <div class="quick-actions">
-          <router-link to="/groups" class="quick-action">
-            <div class="action-icon">➕</div>
-            <span>创建小组</span>
-          </router-link>
-          <router-link to="/collaboration" class="quick-action">
-            <div class="action-icon">💬</div>
-            <span>开始协作</span>
-          </router-link>
-          <router-link to="/profile" class="quick-action">
-            <div class="action-icon">👤</div>
-            <span>个人资料</span>
-          </router-link>
-        </div>
+        <router-link to="/chat" class="action-card">
+          <div class="action-icon">💬</div>
+          <h3>聊天室</h3>
+          <p>与同学实时交流</p>
+        </router-link>
+
+        <router-link to="/profile" class="action-card">
+          <div class="action-icon">👤</div>
+          <h3>个人资料</h3>
+          <p>查看和编辑个人信息</p>
+        </router-link>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-// 这里可以添加数据获取逻辑
+// 不需要复杂的逻辑，保持简单
 </script>
 
 <style lang="scss" scoped>
 .dashboard-page {
-  max-width: 1200px;
-  margin: 0 auto;
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    var(--primary-color) 0%,
+    var(--secondary-color) 100%
+  );
+  padding: var(--space-xl);
 }
 
-.page-header {
+.welcome-container {
+  text-align: center;
+  max-width: 800px;
+  width: 100%;
+}
+
+.brand-section {
   margin-bottom: var(--space-xl);
 
-  h1 {
-    font-size: var(--font-size-2xl);
-    font-weight: 700;
-    color: var(--text-primary);
+  .logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-lg);
+
+    .logo-icon {
+      font-size: 4rem;
+      background: white;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .app-name {
+      font-size: 3.5rem;
+      font-weight: 700;
+      color: white;
+      margin: 0;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  .welcome-message {
+    font-size: var(--font-size-xl);
+    color: white;
+    margin: 0;
+    opacity: 0.9;
+    line-height: 1.5;
+  }
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-lg);
+  margin-top: var(--space-xl);
+}
+
+.action-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-xl);
+    border-color: var(--primary-color);
+  }
+
+  .action-icon {
+    font-size: 3rem;
+    margin-bottom: var(--space-md);
+  }
+
+  h3 {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
     margin-bottom: var(--space-sm);
+    color: var(--text-primary);
   }
 
   p {
     color: var(--text-secondary);
     margin: 0;
+    line-height: 1.5;
   }
 }
 
-.dashboard-grid {
-  display: grid;
-  gap: var(--space-xl);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-lg);
-}
-
-.stat-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
-
-  &:hover {
-    box-shadow: var(--shadow-md);
-  }
-}
-
-.stat-icon {
-  font-size: 2rem;
-  width: 60px;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-hover);
-  border-radius: var(--radius-md);
-}
-
-.stat-value {
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1;
-}
-
-.stat-label {
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-  margin-top: var(--space-xs);
-}
-
-.dashboard-section {
-  h2 {
-    font-size: var(--font-size-xl);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: var(--space-lg);
-  }
-}
-
-.activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.activity-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-md);
-  padding: var(--space-md);
-  background: var(--bg-card);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-}
-
-.activity-icon {
-  font-size: var(--font-size-lg);
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-hover);
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-}
-
-.activity-content {
-  flex: 1;
-
-  p {
-    margin: 0 0 var(--space-xs) 0;
-    color: var(--text-primary);
-  }
-}
-
-.activity-time {
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
-}
-
-.quick-actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: var(--space-md);
-}
-
-.quick-action {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-lg);
-  background: var(--bg-card);
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  transition: all 0.3s ease;
-
-  &:hover {
-    border-color: var(--primary-color);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-  }
-}
-
-.action-icon {
-  font-size: 2rem;
-  width: 60px;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-hover);
-  border-radius: var(--radius-md);
-}
-
+// 响应式设计
 @media (max-width: 768px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .dashboard-page {
+    padding: var(--space-lg);
+  }
+
+  .brand-section {
+    .logo {
+      flex-direction: column;
+      gap: var(--space-md);
+
+      .logo-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 2.5rem;
+      }
+
+      .app-name {
+        font-size: 2.5rem;
+      }
+    }
+
+    .welcome-message {
+      font-size: var(--font-size-lg);
+    }
   }
 
   .quick-actions {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+
+  .action-card {
+    padding: var(--space-lg);
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-section {
+    .logo {
+      .logo-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 2rem;
+      }
+
+      .app-name {
+        font-size: 2rem;
+      }
+    }
+
+    .welcome-message {
+      font-size: var(--font-size-base);
+    }
   }
 }
 </style>
